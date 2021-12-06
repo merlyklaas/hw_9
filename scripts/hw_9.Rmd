@@ -1,0 +1,156 @@
+---
+title: "hw_9"
+author: "Merly Klaas"
+date: "11/23/2021"
+output: 
+    html_document:
+      toc: true
+      toc_float: true
+      toc_depth: 3
+      highlight: kate
+      code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+library(rio)
+library(janitor)
+library(here)
+library(tidyverse)
+library(tidyr)
+library(knitr)
+library(readr)
+library(dplyr)
+```
+# Part 1
+# Read and combine dataset
+
+```{r data}
+ring <- import(here("data", "The_Fellowship_Of_The_Ring.csv"))
+towers <- import(here("data", "The_Two_Towers.csv"))
+king <- import(here("data", "The_Return_Of_The_King.csv"))
+lotr_tidy <- bind_rows(ring, towers, king)
+```
+
+# Describe why the combined data set in not tidy:
+  * Values in Race should be divided into new variable
+  * Female and Male should be combined as one variable (Gender)
+  
+```{r tidying}
+lotr_tidy <- lotr_tidy %>% 
+  pivot_longer(
+    cols = c(Female, Male),
+    names_to = "Gender",
+    values_to= 'words'
+  ) %>% 
+  pivot_wider(
+    names_from = Race,
+    values_from = words
+  )
+
+lotr_tidy <- lotr_tidy %>%
+  select(Gender, Film, everything()) 
+
+```
+
+## Create table and figure from lotr_tidy
+
+```{r read}
+read.csv(here("data","Female.csv"))
+read.csv(here("data", "Male.csv"))
+
+# create female only file 
+lotr_tidy %>% 
+  filter(Gender == "Female") %>% 
+export(here("data", "female_tidy.csv"))
+
+#create male only file
+lotr_tidy %>% 
+  filter(Gender == "Male") %>% 
+  export(here("data", "male_tidy.csv"))
+
+# Total number of words spoken by each race across the entire trilogy
+
+lotr_tidy2 <- lotr_tidy %>% 
+  summarize(elf = sum(Elf),
+            hob = sum(Hobbit),
+            man = sum(Human)) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "race",
+    values_to = "tot_words_spoken"
+  )
+
+
+#create a table for total number of words spoken by each race across the entire trilogy
+lotr_tidy2 %>% 
+  kable()
+
+#create a figure for total number of words spoken by each race across the entire trilogy
+lotr_tidy2 %>% 
+  ggplot() +
+  geom_point(aes(race, tot_words_spoken))
+```
+
+# Let's make messy data
+
+```{r}
+lotr_messy1 <- lotr_tidy %>% 
+  pivot_longer(
+    cols = c(Elf, Hobbit, Human),
+    names_to = "race",
+    values_to = "words"
+  ) %>% 
+  pivot_wider(
+    names_from = Gender,
+    values_from = words
+  )
+```
+
+# Part 2
+## Tidy the Project Reads data
+
+```{r tidying-part2}
+dat <- import(here("data", 
+                   "Project_Reads_Scores.csv")) %>% 
+  clean_names() %>% 
+  select(-5:-9, -24, -25) %>% 
+  filter(student_id != "All Students (Average)")
+dat1 <- dat %>% 
+  pivot_longer(
+    cols = ends_with("score"),
+    names_to = "unit",
+    names_pattern = "unit_(.*)_score",
+#    names_transform = list(score= as.integer),
+    values_to = "score"
+  ) %>% 
+  select (-5:-11)
+dat2 <- dat %>% 
+  pivot_longer(
+    cols = ends_with("percent"),
+    names_to = "unit",
+    names_pattern = "unit_(.*)_percent",
+    values_to = "percent"
+  ) %>% 
+  select(-5:-11)
+
+tidy_dat <- left_join(dat1,dat2)
+
+```
+
+## Produce a summary table
+
+```{r summary}
+tidy_dat %>% 
+  mutate(percent= parse_number(percent)) %>%
+  group_by(test_site, unit) %>% 
+  summarize(mean_percentage = mean(percent)) %>% 
+  kable(caption = "Summary Table of Mean Percentage Correct for Each Unit Within Test Sites",
+        digits = 2,
+        booktabs = TRUE)
+```
+
