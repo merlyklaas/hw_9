@@ -93,7 +93,8 @@ lotr_tidy2 %>%
 #create a figure for total number of words spoken by each race across the entire trilogy
 lotr_tidy2 %>% 
   ggplot() +
-  geom_point(aes(race, tot_words_spoken))
+  geom_col(aes(race, tot_words_spoken)) +
+
 ```
 
 # Let's make messy data
@@ -153,4 +154,29 @@ tidy_dat %>%
         digits = 2,
         booktabs = TRUE)
 ```
+
+```{r}
+dat <- import(here("data", 
+                   "Project_Reads_Scores.csv")) %>% 
+  clean_names() %>% 
+  select(-5:-9, -24, -25) %>% 
+  rename("unit_56_score" = "unit_5_6_score", 
+         "unit_56_percent" = "unit_5_6_percent") %>% 
+  filter(student_id != "All Students (Average)") %>% 
+  pivot_longer(
+    cols = contains("unit"),
+    names_prefix = "unit_",
+    names_sep = "_",
+    names_to = c("unit", "score_type"),
+    values_to = "score",
+    values_transform = list(score = as.character)
+  ) %>% 
+  mutate(score = parse_number(score)) %>% 
+  pivot_wider(
+    names_from = score_type,
+    values_from = score
+  )
+dat
+```
+
 
